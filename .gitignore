@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+#Custom
+*.vs/*
+*.suo
+*.db
+*.ipch
+*Parallel_CH_M/*
+*.pdb
+*x64/*
