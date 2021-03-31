@@ -30,7 +30,18 @@ double* GetMainSimetricMatrix(int size) {
 	return result;
 }
 
-double * GetLPart(double* aMatrix, int mSize) {
+void PrintMainMatrix(double* matrix, int size) {
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++)
+			if (i >= j)
+				std::cout << matrix[i * size + j] << ' ';
+			else
+				std::cout << matrix[j * size + i] << ' ';
+		std::cout << std::endl;
+	}
+}
+
+double* GetLPart(double* aMatrix, int mSize) {
 	double *  resultLPart = new double[mSize * mSize];
 
 	for (int i = 0; i < mSize; i++)
@@ -54,18 +65,14 @@ double* DefaultDecomposition(double* pMatrix){
 int main()
 {
 
+	int defaultSize = 20;
+
+	auto aMatrix = GetMainSimetricMatrix(defaultSize);
+
+	PrintMainMatrix(aMatrix, defaultSize);
+
+
 
 
     std::cout << "Hello World!\n"; 
 }
-
-// Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
-// Отладка программы: F5 или меню "Отладка" > "Запустить отладку"
-
-// Советы по началу работы 
-//   1. В окне обозревателя решений можно добавлять файлы и управлять ими.
-//   2. В окне Team Explorer можно подключиться к системе управления версиями.
-//   3. В окне "Выходные данные" можно просматривать выходные данные сборки и другие сообщения.
-//   4. В окне "Список ошибок" можно просматривать ошибки.
-//   5. Последовательно выберите пункты меню "Проект" > "Добавить новый элемент", чтобы создать файлы кода, или "Проект" > "Добавить существующий элемент", чтобы добавить в проект существующие файлы кода.
-//   6. Чтобы снова открыть этот проект позже, выберите пункты меню "Файл" > "Открыть" > "Проект" и выберите SLN-файл.
