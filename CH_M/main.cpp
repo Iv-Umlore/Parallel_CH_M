@@ -61,34 +61,35 @@ void PrintMatrix(double* matrix, int size) {
 	}
 }
 
-void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, int mSize, int startIndexLine = -1) {
+void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, int mSize, int startIndexLine = -1, int blockLineSize = -1, bool needSqrt = false) {
 
-	if (startIndexLine == -1) {
+	if (startIndexLine == -1)
 		startIndexLine = startIndexColumn;
 
+	if (blockLineSize == -1)
+		blockLineSize = bSize;
 
+	for (int i = startIndexColumn; i < startIndexColumn + bSize; i++) {
 
-	}
-	else 
-		for (int i = startIndexColumn; i < startIndexColumn + bSize; i++) {
-
-			GetElement(aMatrix, &bMatrix[i * mSize + i], i, i, mSize);
+		GetElement(aMatrix, &bMatrix[i * mSize + i], i, i, mSize);
+		if (startIndexLine == -1)
 			bMatrix[i * mSize + i] = aMatrix[i * mSize + i];
 
-			for (int k = startIndexColumn; k < i - 1; k++)
-				bMatrix[i * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[i * mSize + k];
+		for (int k = startIndexLine; k < i - 1; k++)
+			bMatrix[i * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[i * mSize + k];
 
+		if (needSqrt)
 			bMatrix[i * mSize + i] = sqrt(bMatrix[i * mSize + i]);
 
-			for (int j = i + 1; j < startIndexColumn + bSize; j++) {
-				GetElement(aMatrix, &bMatrix[j * mSize + i], j, i, mSize);
+		for (int j = i + 1; j < startIndexLine + blockLineSize; j++) {
+			GetElement(aMatrix, &bMatrix[j * mSize + i], j, i, mSize);
 
-				for (int k = 0; k < i; k++)
-					bMatrix[j * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[j * mSize + k];
+			for (int k = 0; k < i; k++)
+				bMatrix[j * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[j * mSize + k];
 
-				bMatrix[j * mSize + i] /= bMatrix[i * mSize + i];
-			}
+			bMatrix[j * mSize + i] /= bMatrix[i * mSize + i];
 		}
+	}
 
 }
 
@@ -101,12 +102,19 @@ void GetLPart(double* aMatrix, double* resultLPart, int mSize) {
 
 	while (i < mSize - block_size) {
 		Method(aMatrix, resultLPart, i, block_size, mSize);
-		i += block_size;
+		
 		int j = 0;
+		while (j < mSize - block_size) {
+			Method(aMatrix, resultLPart, i, block_size, mSize, j);
+			j += block_size;
+		}
 
+		Method(aMatrix, resultLPart, i, block_size, mSize, j, mSize - j, true);
+
+		i += block_size;
 	}
 
-	Method(aMatrix, resultLPart, i, mSize - i, mSize);
+	Method(aMatrix, resultLPart, i, mSize - i, mSize, i, mSize - i, true);
 }
 
 //double* MatrixMyltiply(double* fMatrix, double* sMatrix) {
@@ -149,9 +157,11 @@ int main()
 	PrintMainMatrix(aMatrix, defaultMatrixSize);
 	std::cout << std::endl;
 
+	std::cout << "Default Decomposition:" << std::endl;
 	PrintMatrix(LPart, defaultMatrixSize);
 	std::cout << std::endl;
 
+	std::cout << "Block Decomposition:" << std::endl;
 	GetLPart(aMatrix, LPart, defaultMatrixSize);
 	PrintMatrix(LPart, defaultMatrixSize);
 	std::cout << std::endl;
