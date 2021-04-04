@@ -14,8 +14,8 @@
 // Свободная кэш память - 16 Мб.
 
 // По условию задачи матрица должна быть не больше 1000, поэтому для текущей задачи возьму число 100 за сторону блока
-const int block_size = 2;//100;
-const int defaultMatrixSize = 5;
+const int block_size = 1;//100;
+const int defaultMatrixSize = 3;
 
 // Создание симметричной положительноопределённой матрицы 
 // A11 A21T
@@ -27,9 +27,9 @@ void GetMainSimetricMatrix(double* result, int size) {
 	// i - column, j - line
 	for (int j = 0; j < size; j++) {
 		for (int i = 0; i < j; i++)
-			result[j * size + i] = std::rand() % 75;
+			result[j * size + i] = std::rand() % 25;
 
-		result[j * size + j] = 76 + std::rand() % 25;
+		result[j * size + j] = 26 + std::rand() % 15;
 	}
 }
 
@@ -61,7 +61,7 @@ void PrintMatrix(double* matrix, int size) {
 	}
 }
 
-void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, int mSize, int startIndexLine = -1, int blockLineSize = -1, bool needSqrt = false) {
+void CompleteBlock(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, int mSize, bool isMainSquare, int startIndexLine = -1, int blockLineSize = -1) {
 
 	if (startIndexLine == -1)
 		startIndexLine = startIndexColumn;
@@ -69,17 +69,17 @@ void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, i
 	if (blockLineSize == -1)
 		blockLineSize = bSize;
 
+#pragma omp parallel for num_threads(4)
 	for (int i = startIndexColumn; i < startIndexColumn + bSize; i++) {
 
-		GetElement(aMatrix, &bMatrix[i * mSize + i], i, i, mSize);
-		if (startIndexLine == -1)
-			bMatrix[i * mSize + i] = aMatrix[i * mSize + i];
+		if (isMainSquare) {
+			GetElement(aMatrix, &bMatrix[i * mSize + i], i, i, mSize);
 
-		for (int k = startIndexLine; k < i - 1; k++)
-			bMatrix[i * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[i * mSize + k];
+			for (int k = startIndexLine; k < i - 1; k++)
+				bMatrix[i * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[i * mSize + k];
 
-		if (needSqrt)
 			bMatrix[i * mSize + i] = sqrt(bMatrix[i * mSize + i]);
+		}
 
 		for (int j = i + 1; j < startIndexLine + blockLineSize; j++) {
 			GetElement(aMatrix, &bMatrix[j * mSize + i], j, i, mSize);
@@ -93,7 +93,7 @@ void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, i
 
 }
 
-void GetLPart(double* aMatrix, double* resultLPart, int mSize) {
+void Cholesky_Decomposition(double* aMatrix, double* resultLPart, int mSize) {
 	for (int i = 0; i < mSize; i++)
 		for (int j = 0; j < mSize; j++)
 			if (i != j)
@@ -101,27 +101,23 @@ void GetLPart(double* aMatrix, double* resultLPart, int mSize) {
 	int i = 0;
 
 	while (i < mSize - block_size) {
-		Method(aMatrix, resultLPart, i, block_size, mSize);
+		CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, true);
 		
 		int j = 0;
 		while (j < mSize - block_size) {
-			Method(aMatrix, resultLPart, i, block_size, mSize, j);
+			CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, false, j);
 			j += block_size;
 		}
 
-		Method(aMatrix, resultLPart, i, block_size, mSize, j, mSize - j, true);
+		CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, false, j, mSize - j);
 
 		i += block_size;
 	}
 
-	Method(aMatrix, resultLPart, i, mSize - i, mSize, i, mSize - i, true);
+	CompleteBlock(aMatrix, resultLPart, i, mSize - i, mSize, true, i, mSize - i);
 }
 
-//double* MatrixMyltiply(double* fMatrix, double* sMatrix) {
-//	double *  resultLPart = new double[1];
-//	return resultLPart;
-//}
-
+/*
 void DefaultDecomposition(double* pMatrix, double* resultLPart, int size) {
 	
 	for (int i = 0; i < size; i++)
@@ -144,25 +140,25 @@ void DefaultDecomposition(double* pMatrix, double* resultLPart, int size) {
 	}
 
 }
-
+*/
 int main()
 {
 
 	auto aMatrix = new double[defaultMatrixSize * defaultMatrixSize];
 	GetMainSimetricMatrix(aMatrix, defaultMatrixSize);
-
+	
 	double* LPart = new double[defaultMatrixSize * defaultMatrixSize];
-	DefaultDecomposition(aMatrix, LPart, defaultMatrixSize);
+	/*DefaultDecomposition(aMatrix, LPart, defaultMatrixSize);
 
 	PrintMainMatrix(aMatrix, defaultMatrixSize);
 	std::cout << std::endl;
 
 	std::cout << "Default Decomposition:" << std::endl;
 	PrintMatrix(LPart, defaultMatrixSize);
-	std::cout << std::endl;
+	std::cout << std::endl;*/
 
 	std::cout << "Block Decomposition:" << std::endl;
-	GetLPart(aMatrix, LPart, defaultMatrixSize);
+	Cholesky_Decomposition(aMatrix, LPart, defaultMatrixSize);
 	PrintMatrix(LPart, defaultMatrixSize);
 	std::cout << std::endl;
 
