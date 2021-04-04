@@ -1,27 +1,29 @@
-// Parallel_CH_M.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
+// Parallel_CH_M.cpp : Р­С‚РѕС‚ С„Р°Р№Р» СЃРѕРґРµСЂР¶РёС‚ С„СѓРЅРєС†РёСЋ "main". Р—РґРµСЃСЊ РЅР°С‡РёРЅР°РµС‚СЃСЏ Рё Р·Р°РєР°РЅС‡РёРІР°РµС‚СЃСЏ РІС‹РїРѕР»РЅРµРЅРёРµ РїСЂРѕРіСЂР°РјРјС‹.
 //
 
 #include <iostream>
 #include <math.h>
 #include <omp.h>
 
-// Для setprecision 
+// Р”Р»СЏ setprecision 
 #include <iomanip>
 
-// Примерный размер блока
-// L2: Всего 256 Мб. Всего 3 блока
-// ~ 80 Мб -> ~ 10млн double -> ~ 3000 * 3000
-// Свободная кэш память - 16 Мб.
+// РџСЂРёРјРµСЂРЅС‹Р№ СЂР°Р·РјРµСЂ Р±Р»РѕРєР°
+// L2: Р’СЃРµРіРѕ 256 РњР±. Р’СЃРµРіРѕ 3 Р±Р»РѕРєР°
+// ~ 80 РњР± -> ~ 10РјР»РЅ double -> ~ 3000 * 3000
+// РЎРІРѕР±РѕРґРЅР°СЏ РєСЌС€ РїР°РјСЏС‚СЊ - 16 РњР±.
 
-// По условию задачи матрица должна быть не больше 1000, поэтому для текущей задачи возьму число 100 за сторону блока
-const int block_size = 100;
+// РџРѕ СѓСЃР»РѕРІРёСЋ Р·Р°РґР°С‡Рё РјР°С‚СЂРёС†Р° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµ Р±РѕР»СЊС€Рµ 1000, РїРѕСЌС‚РѕРјСѓ РґР»СЏ С‚РµРєСѓС‰РµР№ Р·Р°РґР°С‡Рё РІРѕР·СЊРјСѓ С‡РёСЃР»Рѕ 100 Р·Р° СЃС‚РѕСЂРѕРЅСѓ Р±Р»РѕРєР°
+const int block_size = 2;//100;
+const int defaultMatrixSize = 5;
 
-// Создание симметричной положительноопределённой матрицы 
+// РЎРѕР·РґР°РЅРёРµ СЃРёРјРјРµС‚СЂРёС‡РЅРѕР№ РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕРѕРїСЂРµРґРµР»С‘РЅРЅРѕР№ РјР°С‚СЂРёС†С‹ 
 // A11 A21T
 // A21 A22
 //
 void GetMainSimetricMatrix(double* result, int size) {
 
+	srand(time(0));
 	// i - column, j - line
 	for (int j = 0; j < size; j++) {
 		for (int i = 0; i < j; i++)
@@ -30,6 +32,14 @@ void GetMainSimetricMatrix(double* result, int size) {
 		result[j * size + j] = 76 + std::rand() % 25;
 	}
 }
+
+void GetElement(double* aMatrix, double* element, int line, int column, int mSize) {
+	if (line > column)
+		*element = aMatrix[line * mSize + column];
+	else
+		*element = aMatrix[column * mSize + line];
+}
+
 
 void PrintMainMatrix(double* matrix, int size) {
 	for (int i = 0; i < size; i++) {
@@ -46,38 +56,79 @@ void PrintMatrix(double* matrix, int size) {
 
 	for (int i = 0; i < size; i++) {
 		for (int j = 0; j < size; j++)
-				std::cout << std::setprecision(5) << matrix[i * size + j] << "\t";
+				std::cout << std::setprecision(4) << matrix[i * size + j] << "\t";
 		std::cout << std::endl;
 	}
 }
 
-double* GetLPart(double* aMatrix, int mSize) {
-	double *  resultLPart = new double[mSize * mSize];
+void Method(double* aMatrix, double* bMatrix, int startIndexColumn, int bSize, int mSize, int startIndexLine = -1) {
 
+	if (startIndexLine == -1) {
+		startIndexLine = startIndexColumn;
+
+
+
+	}
+	else 
+		for (int i = startIndexColumn; i < startIndexColumn + bSize; i++) {
+
+			GetElement(aMatrix, &bMatrix[i * mSize + i], i, i, mSize);
+			bMatrix[i * mSize + i] = aMatrix[i * mSize + i];
+
+			for (int k = startIndexColumn; k < i - 1; k++)
+				bMatrix[i * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[i * mSize + k];
+
+			bMatrix[i * mSize + i] = sqrt(bMatrix[i * mSize + i]);
+
+			for (int j = i + 1; j < startIndexColumn + bSize; j++) {
+				GetElement(aMatrix, &bMatrix[j * mSize + i], j, i, mSize);
+
+				for (int k = 0; k < i; k++)
+					bMatrix[j * mSize + i] -= bMatrix[i * mSize + k] * bMatrix[j * mSize + k];
+
+				bMatrix[j * mSize + i] /= bMatrix[i * mSize + i];
+			}
+		}
+
+}
+
+void GetLPart(double* aMatrix, double* resultLPart, int mSize) {
 	for (int i = 0; i < mSize; i++)
 		for (int j = 0; j < mSize; j++)
 			if (i != j)
 				resultLPart[i * mSize + j] = 0;
+	int i = 0;
 
-	return resultLPart;
+	while (i < mSize - block_size) {
+		Method(aMatrix, resultLPart, i, block_size, mSize);
+		i += block_size;
+		int j = 0;
+
+	}
+
+	Method(aMatrix, resultLPart, i, mSize - i, mSize);
 }
 
-double* MatrixMyltiply(double* fMatrix, double* sMatrix) {
-	double *  resultLPart = new double[1];
-	return resultLPart;
-}
+//double* MatrixMyltiply(double* fMatrix, double* sMatrix) {
+//	double *  resultLPart = new double[1];
+//	return resultLPart;
+//}
 
 void DefaultDecomposition(double* pMatrix, double* resultLPart, int size) {
 	
-	for (int i = 0; i < size; i++) {		
+	for (int i = 0; i < size; i++)
+		for (int j = 0; j < size; j++)
+			resultLPart[j * size + i] = 0;
+
+	for (int i = 0; i < size; i++) {
+		GetElement(pMatrix, &resultLPart[i * size + i], i, i, size);
 		for (int k = 0; k < i - 1; k++)
 
 			resultLPart[i * size + i] -= resultLPart[i * size + k] * resultLPart[i * size + k];
-		resultLPart[i * size + i] = sqrt(pMatrix[i * size + i]);
-
+		resultLPart[i * size + i] = sqrt(resultLPart[i * size + i]);
+		
 		for (int j = i + 1; j < size; j++) {
-			resultLPart[i * size + j] = 0;
-			resultLPart[j * size + i] = pMatrix[j * size + i];
+			GetElement(pMatrix, &resultLPart[j * size + i], j, i, size);
 			for (int k = 0; k < i; k++)
 				resultLPart[j * size + i] -= resultLPart[i * size + k] * resultLPart[j * size + k];
 			resultLPart[j * size + i] /= resultLPart[i * size + i];
@@ -89,17 +140,21 @@ void DefaultDecomposition(double* pMatrix, double* resultLPart, int size) {
 int main()
 {
 
-	int defaultSize = 5;
+	auto aMatrix = new double[defaultMatrixSize * defaultMatrixSize];
+	GetMainSimetricMatrix(aMatrix, defaultMatrixSize);
 
-	auto aMatrix = new double[defaultSize * defaultSize];
-	GetMainSimetricMatrix(aMatrix, defaultSize);
+	double* LPart = new double[defaultMatrixSize * defaultMatrixSize];
+	DefaultDecomposition(aMatrix, LPart, defaultMatrixSize);
 
-	double* LPart = new double[defaultSize * defaultSize];
-	DefaultDecomposition(aMatrix, LPart, defaultSize);
-
-	PrintMainMatrix(aMatrix, defaultSize);
+	PrintMainMatrix(aMatrix, defaultMatrixSize);
 	std::cout << std::endl;
-	PrintMatrix(LPart, defaultSize);
-	
+
+	PrintMatrix(LPart, defaultMatrixSize);
+	std::cout << std::endl;
+
+	GetLPart(aMatrix, LPart, defaultMatrixSize);
+	PrintMatrix(LPart, defaultMatrixSize);
+	std::cout << std::endl;
+
 	system("pause");
 }
