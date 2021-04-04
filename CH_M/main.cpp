@@ -93,28 +93,28 @@ void CompleteBlock(double* aMatrix, double* bMatrix, int startIndexColumn, int b
 
 }
 
-void Cholesky_Decomposition(double* aMatrix, double* resultLPart, int mSize) {
-	for (int i = 0; i < mSize; i++)
-		for (int j = 0; j < mSize; j++)
+void Cholesky_Decomposition(double* A, double* L, int n) {
+	for (int i = 0; i < n; i++)
+		for (int j = 0; j < n; j++)
 			if (i != j)
-				resultLPart[i * mSize + j] = 0;
+				L[i * n + j] = 0;
 	int i = 0;
 
-	while (i < mSize - block_size) {
-		CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, true);
+	while (i < n - block_size) {
+		CompleteBlock(A, L, i, block_size, n, true);
 		
 		int j = 0;
-		while (j < mSize - block_size) {
-			CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, false, j);
+		while (j < n - block_size) {
+			CompleteBlock(A, L, i, block_size, n, false, j);
 			j += block_size;
 		}
 
-		CompleteBlock(aMatrix, resultLPart, i, block_size, mSize, false, j, mSize - j);
+		CompleteBlock(A, L, i, block_size, n, false, j, n - j);
 
 		i += block_size;
 	}
 
-	CompleteBlock(aMatrix, resultLPart, i, mSize - i, mSize, true, i, mSize - i);
+	CompleteBlock(A, L, i, n - i, n, true, i, n - i);
 }
 
 /*
